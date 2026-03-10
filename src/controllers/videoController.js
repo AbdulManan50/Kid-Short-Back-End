@@ -1,5 +1,27 @@
 const client = require("../config/sanity");
 
+// ─── Get all categories ────────────────────────────────────────────────────────
+exports.getAllCategories = async (req, res) => {
+  try {
+    const query = `*[_type == "category"] | order(title asc) {
+      _id,
+      title,
+      "slug": slug.current
+    }`;
+
+    const categories = await client.fetch(query);
+
+    res.status(200).json({
+      success: true,
+      count: categories.length,
+      data: categories,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
 // ─── Get all videos ───────────────────────────────────────────────────────────
 exports.getAllVideos = async (req, res) => {
   try {
@@ -9,7 +31,7 @@ exports.getAllVideos = async (req, res) => {
       videoUrl,
       hashtags,
       description,
-      category,
+      "category": category->{_id, title, "slug": slug.current},
       likes
     }`;
 
@@ -29,7 +51,19 @@ exports.getAllVideos = async (req, res) => {
 // ─── Create new video ─────────────────────────────────────────────────────────
 exports.createVideo = async (req, res) => {
   try {
-    const { title, videoUrl, hashtags, description, category } = req.body;
+    const { title, videoUrl, hashtags, description, categoryId, categoryTitle } =
+      req.body;
+
+    let categoryRef = undefined;
+    if (categoryId) {
+      categoryRef = { _type: "reference", _ref: categoryId };
+    } else if (categoryTitle) {
+      const cat = await client.fetch(
+        `*[_type == "category" && title == $title][0]{ _id }`,
+        { title: categoryTitle }
+      );
+      if (cat?._id) categoryRef = { _type: "reference", _ref: cat._id };
+    }
 
     const newVideo = await client.create({
       _type: "video",
@@ -37,7 +71,7 @@ exports.createVideo = async (req, res) => {
       videoUrl,
       hashtags,
       description,
-      category,
+      ...(categoryRef ? { category: categoryRef } : {}),
       likes: 0,
     });
 

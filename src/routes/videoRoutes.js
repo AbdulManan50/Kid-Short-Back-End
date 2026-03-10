@@ -6,6 +6,9 @@ const videoController = require('../controllers/videoController')
 router.get('/', videoController.getAllVideos)
 router.post('/', videoController.createVideo)
 
+// Categories
+router.get('/categories', videoController.getAllCategories)
+
 // Like a video
 router.patch('/:id/like', videoController.likeVideo)
 
